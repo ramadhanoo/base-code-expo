@@ -1,12 +1,13 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
-// import AppToast from '../constants/AppToast';
-// import {getStore, getUserToken, logout} from '../redux';
 import { TDefaultData, TError, TResponse } from "./types";
-import { BASE_URL } from "../constants/configs";
-import { getStore, getUserToken } from "../redux/store";
+import { getStore, getUserToken, useAppDispatch } from "../redux/store";
+import { BASE_URL as DEFAULT_BASE_URL } from "../constants/configs";
+import { clearState, setNewToken } from "../redux/slices/AuthSlice";
 
 export const Endpoint = {
   login: "/auth/login",
+  refreshToken: "/auth/refresh", // Endpoint refresh token
+  get_user: "/auth/me",
 };
 
 let abortController = new AbortController();
@@ -16,150 +17,131 @@ const abortAll = () => {
   abortController = new AbortController();
 };
 
-export const http = axios.create({
-  baseURL: BASE_URL,
-  timeout: 10000,
-});
+// Factory function untuk membuat axios instance
+const createHttpInstance = (baseURL: string = DEFAULT_BASE_URL) => {
+  const instance = axios.create({
+    baseURL,
+    timeout: 10000, //10 detik
+  });
 
-http.interceptors.request.use(async (config) => {
-  const userToken = getUserToken();
-  const token = userToken?.accessToken;
-  if (token) {
-    config.headers.Authorization = `Bearer ${token}`;
-  }
-  console.log(`[api path]:`, config.url);
-  console.log(`[api headers]:`, config.headers);
-
-  return config;
-});
-
-// intercept 401 responses and log out the user
-http.interceptors.response.use(
-  (response) => {
-    console.log(
-      `[api response status -- ${response.config.url}]: ${response.status}`
-    );
-    console.log(
-      `[api response data -- ${response.config.url}]:`,
-      JSON.stringify(response.data)
-    );
-
-    return response;
-  },
-  (error) => {
-    console.log("ini error", error.response.config.url);
-    if (
-      error.response?.status === 401 &&
-      !error.response.config.url.include("/auth")
-    ) {
-      // getStore().dispatch(logout());
-      //   AppToast.showInfo({
-      //     title: 'Session expired. Please login again.',
-      //   });
+  instance.interceptors.request.use(async (config) => {
+    const userToken = getUserToken();
+    const token = userToken?.accessToken;
+    if (token) {
+      config.headers.Authorization = `Bearer ${token}`;
     }
+    return config;
+  });
 
-    return Promise.reject(error);
+  instance.interceptors.response.use(
+    async (response) => {
+      return response;
+    },
+    async (error) => {
+      const originalRequest = error.config;
+      // Jika token expired (401) dan bukan refresh-token request
+      if (error.response?.status === 401 && !originalRequest._retry) {
+        originalRequest._retry = true; // Tandai request ini agar tidak looping
+        // jika logic auto logout
+        // dispatch(clearState());
+        try {
+          const newToken = await refreshAccessToken();
+          if (newToken) {
+            originalRequest.headers.Authorization = `Bearer ${newToken}`;
+            return axios(originalRequest); // Ulangi request sebelumnya dengan token baru
+          }
+        } catch (refreshError) {
+          getStore().dispatch(clearState());
+        }
+      }
+
+      return Promise.reject(error);
+    }
+  );
+  return instance;
+};
+
+// Fungsi refresh token
+const refreshAccessToken = async (): Promise<string | null> => {
+  try {
+    const userToken = getUserToken();
+    const refreshToken = userToken?.refreshToken;
+    console.log("refresh token", refreshToken);
+    console.log("old access token", userToken?.accessToken);
+    if (!refreshToken) throw new Error("No refresh token available");
+
+    const response = await axios.post<
+      TResponse<{ accessToken: string; refreshToken: string }>
+    >(`${DEFAULT_BASE_URL}${Endpoint.refreshToken}`, {
+      refreshToken: refreshToken,
+      expiresInMins: 1,
+    });
+
+    console.log("response access token baru", response.data.accessToken);
+
+    const newAccessToken = response.data.accessToken;
+    getStore().dispatch(
+      setNewToken({
+        accessToken: response.data.accessToken,
+        refreshToken: response.data.refreshToken,
+      })
+    );
+
+    return newAccessToken;
+  } catch (error) {
+    return null;
   }
-);
+};
 
-const get = async <T>(
+// Fungsi request API dengan retry logic
+const request = async <T>(
+  method: "get" | "post" | "patch" | "delete",
   url: string,
-  config?: AxiosRequestConfig
+  data?: any,
+  config?: AxiosRequestConfig,
+  baseURL: string = DEFAULT_BASE_URL
 ): Promise<TResponse<T>> => {
   try {
-    const response = await http.get<TResponse<T>>(url, {
+    const http = createHttpInstance(baseURL);
+    const response = await http[method]<TResponse<T>>(url, data, {
       ...config,
       signal: abortController.signal,
     });
+    console.log("coba test ", response);
     return response.data;
   } catch (error) {
-    const axiosError = error as AxiosError;
-    // const response = axiosError.response?.data;
-    // const errorMessage =
-    //   response?.error ?? response?.data?.message ?? 'no error message';
-
-    console.log(`Error while getting ${url}.`, axiosError);
+    const axiosError = error as AxiosError<TResponse<TError>>;
+    const response = axiosError.response?.data;
+    const errorMessage = response?.message ?? "no error message";
+    console.log(`Error while ${method} ${url}.`, errorMessage);
 
     throw error;
   }
 };
 
-const post = async <T = TDefaultData>(
-  url: string,
-  data: any,
-  config?: AxiosRequestConfig
-): Promise<TResponse<T>> => {
-  try {
-    const response = await http.post<TResponse<T>>(url, data, {
-      ...config,
-      signal: abortController.signal,
-    });
-
-    return response.data;
-  } catch (error) {
-    const response = (error as AxiosError<TResponse<TError>>).response?.data;
-    const errorMessage = response?.message ?? 'no error message';
-
-    throw error;
-  }
-};
-
-const patch = async <T = TDefaultData>(
-  url: string,
-  data: any,
-  withFormData: boolean = false,
-  config?: AxiosRequestConfig
-): Promise<TResponse<T>> => {
-  try {
-    const { patch: defaultPatch, patchForm } = http;
-
-    const response = await (withFormData ? patchForm : defaultPatch)<
-      TResponse<T>
-    >(url, data, {
-      ...config,
-      signal: abortController.signal,
-    });
-
-    return response.data;
-  } catch (error) {
-    // const response = (error as AxiosError<TResponse>).response?.data;
-    // const errorMessage =
-    //   response?.error ?? response?.data?.message ?? 'no error message';
-
-    // console.log(`Error while patching ${url}.`, errorMessage);
-
-    throw error;
-  }
-};
-
-const del = async <T = TDefaultData>(
-  url: string,
-  data: any,
-  config?: AxiosRequestConfig
-): Promise<TResponse<T>> => {
-  try {
-    const response = await http.delete<TResponse<T>>(url, {
-      ...config,
-      signal: abortController.signal,
-      data,
-    });
-
-    return response.data;
-  } catch (error) {
-    // const response = (error as AxiosError<TResponse>).response?.data;
-    // const errorMessage =
-    //   response?.error ?? response?.data?.message ?? 'no error message';
-
-    // console.log(`Error while deleting ${url}.`, errorMessage);
-
-    throw error;
-  }
-};
-
-export const Api = {
-  get,
-  post,
-  patch,
-  del,
+// Wrapper API
+const Api = {
+  get: <T>(url: string, config?: AxiosRequestConfig, baseURL?: string) =>
+    request<T>("get", url, undefined, config, baseURL),
+  post: <T = TDefaultData>(
+    url: string,
+    data: any,
+    config?: AxiosRequestConfig,
+    baseURL?: string
+  ) => request<T>("post", url, data, config, baseURL),
+  patch: <T = TDefaultData>(
+    url: string,
+    data: any,
+    config?: AxiosRequestConfig,
+    baseURL?: string
+  ) => request<T>("patch", url, data, config, baseURL),
+  del: <T = TDefaultData>(
+    url: string,
+    data?: any,
+    config?: AxiosRequestConfig,
+    baseURL?: string
+  ) => request<T>("delete", url, data, config, baseURL),
   abortAll,
 };
+
+export { Api, DEFAULT_BASE_URL };

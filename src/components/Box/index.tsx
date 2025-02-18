@@ -1,35 +1,27 @@
 import React from "react";
-import {
-  StyleSheet,
-  ViewProps,
-  View,
-  TouchableOpacity,
-  TouchableOpacityProps,
-} from "react-native";
-import { useTheme } from "@react-navigation/native";
+import { StyleSheet, ViewProps, View } from "react-native";
+import Animated, { AnimatedProps } from "react-native-reanimated";
 
-type CardProps = TouchableOpacityProps & {
+type BoxProps = AnimatedProps<ViewProps> & {
   children?: React.ReactNode;
   orientation?: "horizontal" | "vertical";
 };
 
-const Card: React.FC<CardProps> = ({
+const Box: React.FC<BoxProps> = ({
   orientation = "vertical",
   children,
   ...props
 }) => {
-  const theme = useTheme();
   return (
-    <TouchableOpacity
+    <Animated.View
       {...props}
       style={[
         styles[orientation],
-        { backgroundColor: theme.colors.card },
         props.style,
       ]}
     >
       {children}
-    </TouchableOpacity>
+    </Animated.View>
   );
 };
 
@@ -42,4 +34,4 @@ const styles = StyleSheet.create({
   },
 });
 
-export default Card;
+export default Box;

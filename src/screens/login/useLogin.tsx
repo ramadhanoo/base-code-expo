@@ -1,42 +1,61 @@
-
-
 import { loginProses } from "@/src/redux/actions/AuthAction";
 import { useAppDispatch } from "@/src/redux/store";
-import { useEffect } from "react";
-import Animated, {
-  useSharedValue,
-  withTiming,
-  useAnimatedStyle,
-  Easing,
-} from 'react-native-reanimated';
+import { PATHS } from "@/src/constants/paths";
+import {
+  NavigationProp,
+  ParamListBase,
+  useNavigation,
+} from "@react-navigation/native";
+import { useSelector } from "react-redux";
+import { RootState } from "@/src/redux/reducers";
+import { useForm } from "react-hook-form";
+import { z } from "zod";
+import { zodResolver } from "@hookform/resolvers/zod";
+import { PayloadAction } from "@reduxjs/toolkit";
+import { UserToken } from "@/src/redux/types";
+import { useState } from "react";
+
+const formSchema = z.object({
+  username: z.string().min(1, "Username tidak boleh kosong"),
+  password: z.string().min(8, "Password must contain at least 8 character(s)"),
+});
 
 export function useLogin() {
+  const navigation: NavigationProp<ParamListBase> = useNavigation();
+  // const route = useRoute<RouteProp<StackParamList, typeof PATHS.LOGIN>>();
+  const authState = useSelector((state: RootState) => state.auth);
   const dispatch = useAppDispatch();
-  const randomWidth = useSharedValue(10);
-
-  const config = {
-    duration: 500,
-    easing: Easing.bezier(0.5, 0.01, 0, 1),
-  };
-
-  const styleChart = useAnimatedStyle(() => {
-    return {
-      width: withTiming(randomWidth.value, config),
-    };
+  const [isSecure, setIsSecure] = useState<boolean>(true);
+  const form = useForm<z.infer<typeof formSchema>>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      username: "",
+      password: "",
+    },
   });
-   
-  const onLogin = async () => {
-    const data = await dispatch(loginProses({ username: 'emilys', password: 'emilyspass' }))
-    console.log("datanya", data)
+  const onSubmit = async (data: z.infer<typeof formSchema>) => {
+    const response = (await dispatch(
+      loginProses({ username: data.username, password: data.password })
+    )) as PayloadAction<UserToken>;
+
+    if (response.payload?.id) {
+      navigation.reset({
+        index: 0,
+        routes: [{ name: PATHS.MAIN_STACK }],
+      });
+    }
   };
 
   return {
+    navigation,
+    form,
     action: {
-      onLogin,
-      styleChart
+      onSubmit,
     },
     state: {
-      randomWidth
+      authState,
+      isSecure,
+      setIsSecure
     },
   };
 }

@@ -1,16 +1,25 @@
 import React from "react";
-import { StyleSheet, View, ViewProps } from "react-native";
-import { Theme, useTheme } from "@react-navigation/native";
+import { StyleSheet } from "react-native";
+import { useTheme } from "@react-navigation/native";
+import {
+  SafeAreaView,
+  SafeAreaViewProps,
+} from "react-native-safe-area-context";
 
-type BaseScreenProps = ViewProps & {
+type BaseScreenProps = SafeAreaViewProps & {
   children: React.ReactNode;
 };
 
-const BaseScreen: React.FC<BaseScreenProps> = ({ children, ...props }) => {
+const BaseScreen: React.FC<BaseScreenProps> = ({
+  children,
+  edges = [],
+  ...props
+}) => {
   const theme = useTheme();
   return (
-    <View
+    <SafeAreaView
       {...props}
+      edges={edges}
       style={[
         styles.container,
         { backgroundColor: theme.colors.background },
@@ -18,7 +27,7 @@ const BaseScreen: React.FC<BaseScreenProps> = ({ children, ...props }) => {
       ]}
     >
       {children}
-    </View>
+    </SafeAreaView>
   );
 };
 

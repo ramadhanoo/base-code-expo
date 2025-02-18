@@ -10,22 +10,23 @@ type CustomTextProps = TextProps & {
   children: React.ReactNode;
   type?: TypeFonts;
   size?: number;
+  color?: string;
 };
 
 const CustomText: React.FC<CustomTextProps> = ({
   type = TypeFonts.REGULAR,
   children,
+  color = useTheme().colors.text,
   size = 12,
   ...props
 }) => {
-  const theme = useTheme();
   return (
     <Text
       {...props}
       style={[
         {
           fontFamily: type,
-          color: theme.colors.text,
+          color: color,
           fontSize: size,
         },
         props.style,

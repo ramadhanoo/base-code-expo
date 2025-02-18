@@ -8,11 +8,12 @@ import { Boot } from "./src";
 import { Provider } from "react-redux";
 import { getStore } from "./src/redux/store";
 import { useColorScheme } from "react-native";
-import { DarkTheme, LightTheme } from "./src/utils/GlobalStyle";
-import { StatusBar } from "expo-status-bar";
+import { DarkTheme, fontAssets, LightTheme } from "./src/utils/GlobalStyle";
 import { useFonts } from "expo-font";
 import * as SplashScreen from "expo-splash-screen";
 import { StackParamList } from "./src/routes";
+import Toast from "react-native-toast-message";
+import ToastConfig from "./src/config/ToastConfig";
 
 const App = () => {
   const navigationRef =
@@ -20,30 +21,7 @@ const App = () => {
   const routeNameRef = useRef<string>();
   const store = getStore();
   const scheme = useColorScheme();
-
-  // Load Custom Fonts
-  const [fontsLoaded] = useFonts({
-    "Poppins-Black": require("./assets/fonts/Poppins-Black.ttf"),
-    "Poppins-Bold": require("./assets/fonts/Poppins-Bold.ttf"),
-    "Poppins-Medium": require("./assets/fonts/Poppins-Medium.ttf"),
-    "Poppins-SemiBold": require("./assets/fonts/Poppins-SemiBold.ttf"),
-    "Poppins-Italic": require("./assets/fonts/Poppins-Italic.ttf"),
-    "Poppins-Light": require("./assets/fonts/Poppins-Light.ttf"),
-    "Poppins-Regular": require("./assets/fonts/Poppins-Regular.ttf"),
-  });
-
-  useEffect(() => {
-    async function prepare() {
-      await SplashScreen.preventAutoHideAsync();
-      if (fontsLoaded) {
-        setTimeout(async() => {
-          await SplashScreen.hideAsync();
-        }, 3000)
-    
-      }
-    }
-    prepare();
-  }, [fontsLoaded]);
+  const [fontsLoaded] = useFonts(fontAssets);
 
   const handleStateChange = useCallback(() => {
     const previousRouteName = routeNameRef.current;
@@ -54,8 +32,20 @@ const App = () => {
     }
   }, []);
 
-  if (!fontsLoaded) return null;
+  const startUp = useCallback(async () => {
+    await SplashScreen.preventAutoHideAsync();
+    if (fontsLoaded) {
+      setTimeout(async () => {
+        await SplashScreen.hideAsync();
+      }, 2000);
+    }
+  }, [fontsLoaded]);
 
+  useEffect(() => {
+    startUp();
+  }, [startUp]);
+
+  if (!fontsLoaded) return null;
   return (
     <Provider store={store}>
       <NavigationContainer
@@ -66,9 +56,14 @@ const App = () => {
         }}
         onStateChange={handleStateChange}
       >
-        <StatusBar style="auto" />
         <Boot />
       </NavigationContainer>
+      <Toast
+        config={ToastConfig}
+        position={"bottom"}
+        bottomOffset={100}
+        visibilityTime={3000}
+      />
     </Provider>
   );
 };

@@ -4,7 +4,6 @@ import { PURGE } from "redux-persist";
 import { TError } from "@/src/network/types";
 import { loginProses } from "../actions/AuthAction";
 
-
 const initialState: AuthState = {
   loading: false,
   userToken: null,
@@ -17,8 +16,17 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     clearState: (state) => {
-      state.error = null;
-      state.loading = false;
+      state.userToken = null;
+    },
+    setNewToken: (
+      state: AuthState,
+      { payload }: PayloadAction<{ accessToken: string; refreshToken: string }>
+    ) => {
+      state.userToken = {
+        ...state.userToken,
+        accessToken: payload.accessToken,
+        refreshToken: payload.refreshToken,
+      };
     },
   },
   extraReducers: (builder) => {
@@ -37,24 +45,33 @@ const authSlice = createSlice({
 
     builder.addCase(
       loginProses.rejected,
-      (state: AuthState, { payload }: PayloadAction<TError | null | undefined>) => {
+      (
+        state: AuthState,
+        { payload }: PayloadAction<TError | null | undefined>
+      ) => {
         state.loading = false;
         state.error = payload;
         state.success = false;
       }
     );
 
-    builder.addMatcher(
-      (action) => action.type.endsWith("/pending"),
-      (state: AuthState) => {
-        state.loading = true;
-        state.error = null;
-        state.success = false;
-      }
-    );
+    builder.addCase(loginProses.pending, (state: AuthState) => {
+      state.loading = true;
+      state.error = null;
+      state.success = false;
+    });
+
+    // builder.addMatcher(
+    //   (action) => action.type.endsWith("/pending"),
+    //   (state: AuthState) => {
+    //     state.loading = true;
+    //     state.error = null;
+    //     state.success = false;
+    //   }
+    // );
   },
 });
 
 const AuthReducer = authSlice.reducer;
-export const { clearState } = authSlice.actions;
+export const { clearState, setNewToken } = authSlice.actions;
 export default AuthReducer;

@@ -1,7 +1,9 @@
 import React from "react";
 import {
+  ActivityIndicator,
   Button,
   SafeAreaView,
+  ScrollView,
   StyleSheet,
   Text,
   TouchableOpacity,
@@ -9,47 +11,104 @@ import {
 } from "react-native";
 import { useLogin } from "./useLogin";
 import Animated from "react-native-reanimated";
-import { useTheme } from "@react-navigation/native";
-import { BaseScreen, Card, CustomText } from "@/src/components";
+import { BaseScreen, Box, CustomText } from "@/src/components";
 import { TypeFonts } from "@/src/types/common";
+import Input from "@/src/components/Input";
+import Ionicons from "@expo/vector-icons/Ionicons";
+import { useTheme } from "@react-navigation/native";
+import { Colors } from "@/src/constants/colors";
+import { Controller } from "react-hook-form";
 
 const Login = () => {
-  const { action, state } = useLogin();
+  const { action, state, form } = useLogin();
+  const { authState, setIsSecure, isSecure } = state;
+  const { loading } = authState;
   const theme = useTheme();
+  const {
+    control,
+    handleSubmit,
+    formState: { errors },
+  } = form;
 
   return (
-    <BaseScreen style={styles.container}>
-      <SafeAreaView />
-      <Text>Login Screen</Text>
-      <TouchableOpacity style={styles.button} onPress={() => action.onLogin()}>
-        <Text>Login</Text>
-      </TouchableOpacity>
-      <Text style={{ color: theme.colors.text }}>saha</Text>
-      <Animated.View style={[styles.box, action.styleChart]} />
-      <Button
-        title="toggle"
-        onPress={() => {
-          state.randomWidth.value = Math.random() * 350;
-        }}
-      />
-      <Card
-        orientation="horizontal"
-        onPress={() => {
-          console.log("asuueee");
-        }}
+    <BaseScreen style={styles.container} edges={["top"]}>
+      <ScrollView
+        bounces={false}
+        style={{ flex: 1 }}
+        contentContainerStyle={styles.scroll}
       >
-        <CustomText size={30} type={TypeFonts.BOLD}>
-          Assueee
-        </CustomText>
-        <Text>Assueee</Text>
-      </Card>
+        <Box>
+          <Controller
+            name="username"
+            control={control}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                parentStyle={{ marginHorizontal: 20 }}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                iconLeft={
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={32}
+                    color={theme.colors.text}
+                  />
+                }
+                placeholder="username"
+                errorMessage={errors.username?.message}
+              />
+            )}
+          />
+
+          <Controller
+            name="password"
+            control={control}
+            render={({ field: { onChange, onBlur, value } }) => (
+              <Input
+                parentStyle={{ marginHorizontal: 20 }}
+                onBlur={onBlur}
+                onChangeText={onChange}
+                value={value}
+                iconRight={
+                  <Ionicons
+                    name="checkmark-circle"
+                    size={32}
+                    color={theme.colors.text}
+                  />
+                }
+                onRightIconPress={() => setIsSecure(!isSecure)}
+                placeholder="password"
+                secureTextEntry={isSecure}
+                errorMessage={errors.password?.message}
+              />
+            )}
+          />
+        </Box>
+        <TouchableOpacity
+          style={styles.button}
+          onPress={handleSubmit(action.onSubmit)}
+        >
+          {loading ? (
+            <ActivityIndicator color={"#fff"} />
+          ) : (
+            <CustomText size={16} type={TypeFonts.BOLD} color={Colors.white}>
+              Login
+            </CustomText>
+          )}
+        </TouchableOpacity>
+      </ScrollView>
     </BaseScreen>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
+    gap: 20,
+    justifyContent: "center",
+  },
+  scroll: {
     flex: 1,
+    justifyContent: "center",
   },
   box: {
     width: 100,
@@ -58,11 +117,13 @@ const styles = StyleSheet.create({
     margin: 30,
   },
   button: {
-    paddingVertical: 10,
+    paddingVertical: 15,
     paddingHorizontal: 20,
     backgroundColor: "red",
     justifyContent: "center",
     alignItems: "center",
+    margin: 20,
+    borderRadius: 10,
   },
 });
 
