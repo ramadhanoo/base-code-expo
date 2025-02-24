@@ -9,14 +9,14 @@ import { RootState } from "../redux/reducers";
 const Stack = createNativeStackNavigator<StackParamList>();
 
 const Routes = () => {
-  const userToken = useSelector((state: RootState) => state.auth);
+  const userState = useSelector((state: RootState) => state.auth);
   return (
     <Stack.Navigator
       screenOptions={{
         headerShown: false,
       }}
     >
-      {userToken.userToken ? (
+      {userState.user.userToken ? (
         <Stack.Screen name={PATHS.MAIN_STACK} component={MainStack} />
       ) : (
         <Stack.Screen name={PATHS.AUTH_STACK} component={AuthStack} />

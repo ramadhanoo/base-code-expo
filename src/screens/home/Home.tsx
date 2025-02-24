@@ -6,24 +6,16 @@ import { useSelector } from "react-redux";
 import { useHome } from "./useHome";
 
 const Home = () => {
-  const authState = useSelector((state: RootState) => state.auth);
-  const { action } = useHome()
+  const authState = useSelector((state: RootState) => state.auth.user.userInfo);
+  const { action } = useHome();
 
   return (
     <BaseScreen edges={["top"]}>
-      <CustomText>
-        haii {authState.userToken?.email} apa kabar
-      </CustomText>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => action.onLogout()}
-      >
+      <CustomText>haii {authState?.email} apa kabar</CustomText>
+      <TouchableOpacity style={styles.button} onPress={() => action.onLogout()}>
         <CustomText>Logout</CustomText>
       </TouchableOpacity>
-      <TouchableOpacity
-        style={styles.button}
-        onPress={() => action.hitUser()}
-      >
+      <TouchableOpacity style={styles.button} onPress={() => action.hitUser()}>
         <CustomText>hit user</CustomText>
       </TouchableOpacity>
     </BaseScreen>

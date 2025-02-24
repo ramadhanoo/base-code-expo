@@ -1,4 +1,4 @@
-import { loginProses } from "@/src/redux/actions/AuthAction";
+import { getUser, loginProses } from "@/src/redux/actions/AuthAction";
 import { useAppDispatch } from "@/src/redux/store";
 import { PATHS } from "@/src/constants/paths";
 import {
@@ -14,6 +14,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import { PayloadAction } from "@reduxjs/toolkit";
 import { UserToken } from "@/src/redux/types";
 import { useState } from "react";
+import { clearState } from "@/src/redux/slices/AuthSlice";
 
 const formSchema = z.object({
   username: z.string().min(1, "Username tidak boleh kosong"),
@@ -39,10 +40,7 @@ export function useLogin() {
     )) as PayloadAction<UserToken>;
 
     if (response.payload?.id) {
-      navigation.reset({
-        index: 0,
-        routes: [{ name: PATHS.MAIN_STACK }],
-      });
+      dispatch(getUser());
     }
   };
 
@@ -55,7 +53,7 @@ export function useLogin() {
     state: {
       authState,
       isSecure,
-      setIsSecure
+      setIsSecure,
     },
   };
 }

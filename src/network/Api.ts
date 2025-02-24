@@ -1,14 +1,9 @@
 import axios, { AxiosError, AxiosRequestConfig } from "axios";
 import { TDefaultData, TError, TResponse } from "./types";
-import { getStore, getUserToken, useAppDispatch } from "../redux/store";
+import { getStore, getUserToken } from "../redux/store";
 import { BASE_URL as DEFAULT_BASE_URL } from "../constants/configs";
 import { clearState, setNewToken } from "../redux/slices/AuthSlice";
-
-export const Endpoint = {
-  login: "/auth/login",
-  refreshToken: "/auth/refresh", // Endpoint refresh token
-  get_user: "/auth/me",
-};
+import { AuthAPI } from "../constants/ApiUrls";
 
 let abortController = new AbortController();
 
@@ -26,7 +21,7 @@ const createHttpInstance = (baseURL: string = DEFAULT_BASE_URL) => {
 
   instance.interceptors.request.use(async (config) => {
     const userToken = getUserToken();
-    const token = userToken?.accessToken;
+    const token = userToken?.userToken?.accessToken;
     if (token) {
       config.headers.Authorization = `Bearer ${token}`;
     }
@@ -49,7 +44,7 @@ const createHttpInstance = (baseURL: string = DEFAULT_BASE_URL) => {
           if (newToken) {
             originalRequest.headers.Authorization = `Bearer ${newToken}`;
             return axios(originalRequest); // Ulangi request sebelumnya dengan token baru
-          }
+          } 
         } catch (refreshError) {
           getStore().dispatch(clearState());
         }
@@ -65,20 +60,14 @@ const createHttpInstance = (baseURL: string = DEFAULT_BASE_URL) => {
 const refreshAccessToken = async (): Promise<string | null> => {
   try {
     const userToken = getUserToken();
-    const refreshToken = userToken?.refreshToken;
-    console.log("refresh token", refreshToken);
-    console.log("old access token", userToken?.accessToken);
+    const refreshToken = userToken?.userToken?.refreshToken;
     if (!refreshToken) throw new Error("No refresh token available");
-
     const response = await axios.post<
       TResponse<{ accessToken: string; refreshToken: string }>
-    >(`${DEFAULT_BASE_URL}${Endpoint.refreshToken}`, {
+    >(`${DEFAULT_BASE_URL}${AuthAPI.REFRESH_TOKEN}`, {
       refreshToken: refreshToken,
       expiresInMins: 1,
     });
-
-    console.log("response access token baru", response.data.accessToken);
-
     const newAccessToken = response.data.accessToken;
     getStore().dispatch(
       setNewToken({
@@ -89,7 +78,7 @@ const refreshAccessToken = async (): Promise<string | null> => {
 
     return newAccessToken;
   } catch (error) {
-    return null;
+    throw error
   }
 };
 
@@ -107,7 +96,6 @@ const request = async <T>(
       ...config,
       signal: abortController.signal,
     });
-    console.log("coba test ", response);
     return response.data;
   } catch (error) {
     const axiosError = error as AxiosError<TResponse<TError>>;

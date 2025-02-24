@@ -1,8 +1,9 @@
 import { createAsyncThunk } from "@reduxjs/toolkit";
 import { AxiosError } from "axios";
-import { UserToken } from "../types";
-import { Api, Endpoint, TError, TResponse } from "@/src/network";
+import { DetailUser, UserToken } from "../types";
+import { Api, TError } from "@/src/network";
 import AppToast from "@/src/constants/AppToast";
+import { AuthAPI, UsersAPI } from "@/src/constants/ApiUrls";
 
 type TLoginPayload = {
   username: string;
@@ -18,7 +19,7 @@ export const loginProses = createAsyncThunk<
   "auth/login",
   async ({ username, password }: TLoginPayload, { rejectWithValue }) => {
     try {
-      const response = await Api.post<UserToken>(Endpoint.login, {
+      const response = await Api.post<UserToken>(AuthAPI.LOGIN, {
         username,
         password,
         expiresInMins: 1
@@ -40,12 +41,12 @@ export const loginProses = createAsyncThunk<
 );
 
 export const getUser = createAsyncThunk<
-  UserToken,
+  DetailUser,
   undefined,
   { rejectValue: TError | undefined }
 >("auth/get_user", async (_, { rejectWithValue }) => {
   try {
-    const response = await Api.get<UserToken>(Endpoint.get_user);
+    const response = await Api.get<DetailUser>(UsersAPI.GET_USER);
     return response;
   } catch (error) {
     const response = (error as AxiosError)?.response?.data as TError;

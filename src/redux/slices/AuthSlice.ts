@@ -1,12 +1,15 @@
 import { PayloadAction, createAsyncThunk, createSlice } from "@reduxjs/toolkit";
-import { AuthState, UserToken } from "../types";
+import { AuthState, DetailUser, UserToken } from "../types";
 import { PURGE } from "redux-persist";
 import { TError } from "@/src/network/types";
-import { loginProses } from "../actions/AuthAction";
+import { getUser, loginProses } from "../actions/AuthAction";
 
 const initialState: AuthState = {
   loading: false,
-  userToken: null,
+  user: {
+    userInfo: null,
+    userToken: null,
+  },
   error: null,
   success: false,
 };
@@ -16,14 +19,17 @@ const authSlice = createSlice({
   initialState,
   reducers: {
     clearState: (state) => {
-      state.userToken = null;
+      state.user = {
+        userInfo: null,
+        userToken: null,
+      };
     },
     setNewToken: (
       state: AuthState,
       { payload }: PayloadAction<{ accessToken: string; refreshToken: string }>
     ) => {
-      state.userToken = {
-        ...state.userToken,
+      state.user.userToken = {
+        ...state.user.userToken,
         accessToken: payload.accessToken,
         refreshToken: payload.refreshToken,
       };
@@ -38,7 +44,7 @@ const authSlice = createSlice({
       loginProses.fulfilled,
       (state: AuthState, { payload }: PayloadAction<UserToken>) => {
         state.loading = false;
-        state.userToken = payload;
+        state.user.userToken = payload;
         state.success = true;
       }
     );
@@ -60,6 +66,13 @@ const authSlice = createSlice({
       state.error = null;
       state.success = false;
     });
+
+    builder.addCase(
+      getUser.fulfilled,
+      (state: AuthState, { payload }: PayloadAction<DetailUser>) => {
+        state.user.userInfo = payload;
+      }
+    );
 
     // builder.addMatcher(
     //   (action) => action.type.endsWith("/pending"),

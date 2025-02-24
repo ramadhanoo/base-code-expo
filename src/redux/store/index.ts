@@ -15,6 +15,7 @@ import { useDispatch } from "react-redux";
 import { ENV } from "@/src/constants/configs";
 import reactotron from "../../../ReactotronConfig";
 import { setNewToken } from "../slices/AuthSlice";
+import { usersApi } from "../api/users";
 
 const persistConfig = {
   key: "root",
@@ -36,7 +37,7 @@ const store = configureStore({
       serializableCheck: {
         ignoredActions: [FLUSH, REHYDRATE, PAUSE, PERSIST, PURGE, REGISTER],
       },
-    }).concat(middlewares, []);
+    }).concat(middlewares, [usersApi.middleware]);
   },
   enhancers: (getDefaultEnhancers) =>
     getDefaultEnhancers().concat(reactotron.createEnhancer()),
@@ -46,7 +47,7 @@ const persistor = persistStore(store);
 export const getPersistor = () => persistor;
 export const getStore = () => store;
 export const getState = () => store.getState();
-export const getUserToken = () => store.getState().auth.userToken;
+export const getUserToken = () => store.getState().auth.user;
 
 export type AppDispatch = typeof store.dispatch;
 export const useAppDispatch = useDispatch.withTypes<AppDispatch>(); // Export a hook that can be reused to resolve types
